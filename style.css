@@ -71,3 +71,27 @@ html,body,#app,#app *{touch-action:pan-x pan-y!important}
  #movePanel .dpad{width:144px;grid-template-columns:repeat(2,56px);grid-template-rows:56px;column-gap:32px}
 }
 @media(prefers-reduced-motion:reduce){.judgement.show{animation:none;opacity:1}}
+
+/* One corner control replaces the full-width header. The game canvas starts at the top. */
+.settingsButton{position:absolute;right:18px;top:16px;width:48px;height:48px;display:grid;place-items:center;padding:10px;border-radius:50%;background:#142729b8;border-color:#d7f57344;color:#d7f573;z-index:2;box-shadow:0 3px 14px #0002}
+.settingsButton svg{width:27px;height:27px;display:block;transition:transform .18s ease}
+.settingsButton:hover svg{transform:rotate(25deg)}
+.settingsDialog{width:380px;max-width:calc(100vw - 32px);padding:28px;border-radius:16px}
+.settingsDialog h2{font-size:28px;margin:10px 0 22px}
+.soundRow{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:18px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.soundRow strong{display:block;font-size:16px}.soundRow small{display:block;font-size:13px;color:var(--muted);margin-top:4px}
+.soundSwitch{display:flex;align-items:center;gap:10px;background:none;border:0;padding:8px 0 8px 8px;min-height:44px;font-size:13px;color:var(--muted)}
+.switchTrack{width:48px;height:28px;border-radius:20px;background:#455751;border:1px solid #62756b;position:relative;display:block;flex-shrink:0}
+.switchTrack i{position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#d0dad0;transition:transform .15s ease}
+.soundSwitch.on{color:var(--lime)}.soundSwitch.on .switchTrack{background:var(--lime);border-color:var(--lime)}.soundSwitch.on .switchTrack i{background:#183022;transform:translateX(20px)}
+.settingsHelp{width:100%;display:block;text-align:left;margin-top:18px;padding:16px;min-height:72px;background:#1a3532;border-color:#38594d}
+.settingsHelp strong{font-size:16px;display:block}.settingsHelp small{display:block;font-size:13px;color:var(--muted);margin-top:5px}
+@media(orientation:landscape) and (max-height:540px), (orientation:portrait) and (max-width:600px), (orientation:portrait) and (any-pointer:coarse){
+ #menu{padding-top:64px;padding-bottom:12px}
+ .settingsButton{right:14px;top:12px;width:44px;height:44px;padding:9px}
+ .settingsButton svg{width:26px;height:26px}
+ .settingsDialog{padding:20px 26px;max-height:calc(100dvh - 24px)}
+ .settingsDialog h2{font-size:25px;margin:6px 0 16px}.soundRow{padding:12px 0}.settingsHelp{margin-top:14px;padding:12px 15px;min-height:66px}
+}
+.virtualLandscape .settingsDialog[open]{width:min(380px,calc(var(--game-width) - 32px));max-height:calc(var(--game-height) - 24px)}
+@media(prefers-reduced-motion:reduce){.settingsButton svg,.switchTrack i{transition:none}}
