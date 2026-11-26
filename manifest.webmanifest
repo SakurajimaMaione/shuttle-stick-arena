@@ -1,0 +1,10 @@
+{
+  "name": "羽毛球 · 火柴人球场",
+  "short_name": "火柴人球场",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0c191b",
+  "theme_color": "#0c191b",
+  "lang": "zh-CN"
+}
