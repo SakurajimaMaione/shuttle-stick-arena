@@ -9,6 +9,7 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const matchWon=(a,b)=>a===30||(a>=21&&a-b>=2);
 let view='top', count=1, state='menu', previousState='serve', players=[], score=[0,0], games=[0,0], history=[], servingTeam=0, serverIndex=0, serviceCycle=0, turn=0, ball=null, rally=0, aim=[{x:1.3,y:2.3},{x:4.8,y:11.1}], selected=['clear','clear'], keys=new Set(), pointerMoves=new Set(), clock=0, last=0, toastUntil=0, dimensions={}, effects=[], qualityMessage='', audioOn=true, audioCtx, aiTimer=0, receiveGrace=0, endChanged=false;
 const HOLD_MS=350;
+const SMASH_HOLD_MS=180;
 const RACKETS={attack:{name:'进攻拍',smash:.90,windup:.11,recovery:.24},speed:{name:'速度拍',smash:1,windup:.045,recovery:.12},balance:{name:'平衡拍',smash:.95,windup:.075,recovery:.18}};
 let racketChoices=['balance','balance'],racketTeam=0,serveReadyAt=0,serviceRight=[0,0];
 const heldInputs=new Map();
@@ -82,7 +83,7 @@ function humanHit(team,type,{jump=false}={}){
  showJudgement(quality>.85?'PERFECT':'GOOD',team,jump?'跳杀 · 火焰加速':SHOTS[type].name);
  return hitBall;
 }
-// A smash press is resolved on release; holding only starts one grounded jump.
+// Short release swings; long release jumps. Holding never changes vertical velocity.
 function startJump(team){
  const p=players.find(p=>p.team===team&&!p.partner);
  if(state!=='rally'||!p||p.z>0||p.vz!==0)return false;
@@ -103,14 +104,15 @@ function beginInput(id,kind,team=0){
  if(heldInputs.has(id))return;
  if(kind==='serve'&&(state!=='serve'||servingTeam!==team))return;
  if(kind==='smash'&&state!=='rally')return;
- primeAudio();const input={kind,team,held:false,timer:null};heldInputs.set(id,input);
- input.timer=setTimeout(()=>{if(heldInputs.get(id)!==input)return;input.held=true;if(kind==='smash')startJump(team);},HOLD_MS);
+ primeAudio();const input={kind,team,at:performance.now(),held:false,timer:null};heldInputs.set(id,input);
+ input.timer=setTimeout(()=>{if(heldInputs.get(id)!==input)return;input.held=true;},kind==='smash'?SMASH_HOLD_MS:HOLD_MS);
 }
 function finishInput(id,cancel=false){
  const input=heldInputs.get(id);if(!input)return;
  clearTimeout(input.timer);heldInputs.delete(id);if(cancel)return;
  if(input.kind==='serve'){if(state==='serve'&&servingTeam===input.team)doServe(input.held?'long':'short');}
- else if(!input.held)shotInput(input.team,'smash');
+ else if(input.held||performance.now()-input.at>=SMASH_HOLD_MS)startJump(input.team);
+ else shotInput(input.team,'smash');
 }
 function cancelInputs(){for(const input of heldInputs.values())clearTimeout(input.timer);heldInputs.clear();for(const p of players)p.pendingStrike=null;}
 function openRackets(){
@@ -190,7 +192,7 @@ function resize(){
 function project(x,y,z=0){const d=dimensions;if(view==='top'||isLobby()){const yy=endChanged?13.4-y:y;const xx=endChanged?6.1-x:x;return {x:d.cx+(xx-3.05)*d.cw/6.1,y:d.top+yy*d.ch/13.4-z*10};}const available=d.w*.78,s=available/13.4;const yy=endChanged?13.4-y:y;return {x:d.cx+(6.7-yy)*s,y:d.sideBase-z*d.sideScale+(x-3.05)*3};}
 function line(points,color='#d6e6d3a0',width=1.5){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();}
 function worldLine(x,y,xx,yy,color,width){line([project(x,y),project(xx,yy)],color,width);}
-function drawCourt(){const d=dimensions;ctx.fillStyle='#102324';ctx.fillRect(0,0,d.w,d.h);const glow=ctx.createRadialGradient(d.cx,d.cy,0,d.cx,d.cy,d.w*.65);glow.addColorStop(0,'#28413b');glow.addColorStop(1,'#102324');ctx.fillStyle=glow;ctx.fillRect(0,0,d.w,d.h);
+function drawCourt(){const d=dimensions;ctx.fillStyle='#31584b';ctx.fillRect(0,0,d.w,d.h);const glow=ctx.createRadialGradient(d.cx,d.cy,0,d.cx,d.cy,d.w*.65);glow.addColorStop(0,'#486f5f');glow.addColorStop(1,'#31584b');ctx.fillStyle=glow;ctx.fillRect(0,0,d.w,d.h);
  ctx.strokeStyle='#bcd4aa06';ctx.lineWidth=1;for(let i=0;i<d.w;i+=46){line([{x:i,y:0},{x:i,y:d.h}],'#d7f57304',1);}const corners=[[0,0],[6.1,0],[6.1,13.4],[0,13.4]].map(([x,y])=>project(x,y));ctx.beginPath();corners.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle='#356858';ctx.shadowColor='#0005';ctx.shadowBlur=35;ctx.fill();ctx.shadowBlur=0;
  if(view==='top'||isLobby()){const middle=project(0,6.7);ctx.fillStyle='#2d5b4e';ctx.fillRect(corners[0].x,middle.y,d.cw,Math.abs(corners[2].y-middle.y));for(let i=0;i<14;i++)worldLine(0,i,6.1,i,'#9ad5ab07',1);}
  const b=bounds();for(const x of [0,.46,5.64,6.1])worldLine(x,0,x,13.4,x===b.left||x===b.right?'#e9f3dfc4':'#d2e4d660',x===b.left||x===b.right?2:1);for(const y of [0,.76,4.72,8.68,12.64,13.4])worldLine(0,y,6.1,y,'#e6f0dca0',1.4);worldLine(3.05,0,3.05,4.72);worldLine(3.05,8.68,3.05,13.4);

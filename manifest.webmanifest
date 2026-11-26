@@ -4,7 +4,7 @@
   "start_url": "./",
   "display": "fullscreen",
   "orientation": "landscape",
-  "background_color": "#0c191b",
-  "theme_color": "#0c191b",
+  "background_color": "#31584b",
+  "theme_color": "#31584b",
   "lang": "zh-CN"
 }
