@@ -49,7 +49,8 @@
 #app canvas,#app [data-move]{touch-action:none}
 
 /* Leave a deliberate gap between the only two movement targets. */
-#movePanel .dpad{width:160px;grid-template-columns:repeat(2,64px);grid-template-rows:64px;column-gap:32px}
+#movePanel .dpad{--move-key-size:72px;width:max-content;grid-template-columns:repeat(2,var(--move-key-size));grid-template-rows:var(--move-key-size);column-gap:32px}
+#movePanel .dpad button{font-size:34px}
 #movePanel .dpad [data-move="left"]{grid-column:1}#movePanel .dpad [data-move="right"]{grid-column:2}
 #shotPanel [data-shot="smash"] small{display:block;color:#f4c277;font-size:11px;line-height:1.4}
 .judgement{position:absolute;left:50%;top:115px;z-index:4;transform:translateX(-50%);text-align:center;pointer-events:none;white-space:nowrap;line-height:1.1;text-shadow:0 3px 15px #000b}
@@ -68,7 +69,7 @@ html,body,#app,#app *{touch-action:pan-x pan-y!important}
  .judgement{top:78px}.judgement strong{font-size:43px}.judgement small{font-size:12px;margin-top:6px}
 }
 @media(max-width:700px) and (orientation:landscape), (max-height:700px) and (orientation:portrait){
- #movePanel .dpad{width:144px;grid-template-columns:repeat(2,56px);grid-template-rows:56px;column-gap:32px}
+ #movePanel .dpad{--move-key-size:64px}
 }
 @media(prefers-reduced-motion:reduce){.judgement.show{animation:none;opacity:1}}
 
@@ -135,7 +136,7 @@ html,body,#app,#app *{touch-action:pan-x pan-y!important}
 .resultActions #returnMatchBtn,.resultActions #resumeBtn,.resultActions #resultMenuBtn{grid-column:1 / -1}
 .resultActions #returnMatchBtn{min-height:46px}
 @media(orientation:landscape) and (max-height:540px), (orientation:portrait) and (max-width:600px), (orientation:portrait) and (any-pointer:coarse){
- #bottomControls{display:grid;grid-template-columns:160px minmax(0,1fr) 166px;gap:12px;align-items:end}
+ #bottomControls{display:grid;grid-template-columns:max-content minmax(0,1fr) 166px;gap:12px;align-items:end}
  #centerStatus{justify-self:center;width:min(100%,340px);padding:8px 12px;max-width:none}
  #centerStatus .shotHint{font-size:12px;min-height:0}#centerStatus #aimText{display:none}#centerStatus #serveHint{font-size:11px}
  #shotPanel{width:166px}#shotPanel .shots{margin:0}
@@ -143,4 +144,4 @@ html,body,#app,#app *{touch-action:pan-x pan-y!important}
  .pauseCard h2{font-size:23px;margin:5px 0}.pauseCard p{font-size:13px;line-height:1.4;margin:6px 0 10px}.pauseCard .eyebrow{font-size:10px}
  .resultActions{gap:6px}.resultActions button{font-size:13px;min-height:34px;padding:6px 10px}.resultActions #returnMatchBtn{min-height:40px}
 }
-@media(orientation:landscape) and (max-height:320px), (orientation:portrait) and (max-width:320px){#bottomControls{grid-template-columns:144px minmax(0,1fr) 148px;gap:10px}#shotPanel{width:148px}#centerStatus{padding:6px 8px}.pauseCard{padding:10px 20px}.pauseCard p{margin:4px 0 8px}}
+@media(orientation:landscape) and (max-height:320px), (orientation:portrait) and (max-width:320px){#bottomControls{grid-template-columns:max-content minmax(0,1fr) 148px;gap:10px}#shotPanel{width:148px}#centerStatus{padding:6px 8px}.pauseCard{padding:10px 20px}.pauseCard p{margin:4px 0 8px}}
