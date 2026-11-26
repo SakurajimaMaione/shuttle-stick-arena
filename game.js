@@ -16,6 +16,9 @@ const heldInputs=new Map();
 const racketFor=p=>RACKETS[racketChoices[p.team]];
 const isLobby=()=>state==='menu'||state==='racket';
 let lastSmash=[null,null],judgement=null;
+const CHEER_SECONDS=2;
+const CROWD_COLORS=['#e8b77d','#a9dca9','#d5dc8c','#92cbd6','#e3a2a0'];
+let cheerRemaining=0;
 const GRADE_TONES={PERFECT:[880,1175,1480],GOOD:[660],BAD:[220,140]};
 const playerName=t=>count===1?(t===0?'你':'电脑'):(t===0?'P1 队':'P2 队');
 function notify(text,seconds=2){$('#toast').textContent=text;$('#toast').classList.add('visible');toastUntil=clock+seconds;}
@@ -24,7 +27,7 @@ function bounds(){return count===2?{left:0,right:6.1}:{left:.46,right:5.64};}
 function makePlayer(team,partner=false){return {team,partner,ai:partner||(team===1&&count===1),x:partner?4.7:2.1,y:team===0?10.4:3,z:0,vz:0,moveUsed:false,target:null,swing:0,walk:0,crouch:false,jumpArmed:false,shotReadyAt:0,pendingStrike:null,swingTotal:.3};}
 function resetPositions(){players=[makePlayer(0),makePlayer(1)];if(count===2)players.push(makePlayer(0,true),makePlayer(1,true));players.forEach(p=>{p.x=p.partner?4.6:1.5;p.y=p.team===0?(p.partner?11.2:9.4):(p.partner?2.2:4);});const server=players.find(p=>p.team===servingTeam&&Number(p.partner)===serverIndex)||players.find(p=>p.team===servingTeam);serverIndex=Number(server.partner);const sx=score[servingTeam]%2===0?(servingTeam===0?4.4:1.7):(servingTeam===0?1.7:4.4);server.x=sx;server.y=servingTeam===0?9:4.4;players.filter(p=>p.team===servingTeam&&p!==server).forEach(p=>{p.x=6.1-sx;p.y=servingTeam===0?11.4:2;});const receiverIndex=count===2?(score[servingTeam]%2===0?serviceRight[1-servingTeam]:1-serviceRight[1-servingTeam]):0;const receiver=players.find(p=>p.team!==servingTeam&&Number(p.partner)===receiverIndex);receiver.x=6.1-sx;receiver.y=servingTeam===0?3.8:9.6;players.filter(p=>p.team!==servingTeam&&p!==receiver).forEach(p=>{p.x=sx;p.y=servingTeam===0?2:11.4;});}
 function scoreboard(){for(let t=0;t<2;t++){$('#score'+t).textContent=score[t];$('#name'+t).textContent=playerName(t)+(servingTeam===t?' · 发球':'');$('#games'+t).textContent='●'.repeat(games[t])+'○'.repeat(2-games[t]);}$('#setLabel').textContent=`第 ${history.length+1} 局 · 21 分`;$('#rallyTag').textContent=state==='serve'?'准备发球 · 右双左单':`第 ${rally} 拍`;$('#serveBtn').hidden=state!=='serve';}
-function start(){cancelInputs();$('#racketMenu').hidden=true;lastSmash=[null,null];judgement=null;$('#judgement').hidden=true;primeAudio();score=[0,0];games=[0,0];history=[];servingTeam=0;serverIndex=0;serviceCycle=0;serviceRight=[0,0];ball=null;effects=[];state='serve';serveReadyAt=clock;rally=0;endChanged=false;resetPositions();$('#menu').hidden=true;$('#pauseOverlay').hidden=true;['scoreboard','rallyTag','bottomControls','matchActions'].forEach(id=>$('#'+id).hidden=false);$('#footerHint').textContent=count===2?'P1：WASD + J K L ;　 P2：TFGH + 1 2 3 4':'移动：WASD / 方向键　击球：J K L ;';$('#moveTitle').textContent=view==='top'?'一拍一步':'自由跑位';$('#moveHint').textContent=view==='top'?'点击己方半场移动':'左右跑位 · 上键跳起';$('#aimText').textContent=view==='top'?'点击对方半场瞄准':'靠近球再出手';aiTimer=clock+1;scoreboard();resize();notify('点按发前场 · 长按松开发后场；时机条中间最准确。',4);updateTiming();}
+function start(){cheerRemaining=0;cancelInputs();$('#racketMenu').hidden=true;lastSmash=[null,null];judgement=null;$('#judgement').hidden=true;primeAudio();score=[0,0];games=[0,0];history=[];servingTeam=0;serverIndex=0;serviceCycle=0;serviceRight=[0,0];ball=null;effects=[];state='serve';serveReadyAt=clock;rally=0;endChanged=false;resetPositions();$('#menu').hidden=true;$('#pauseOverlay').hidden=true;['scoreboard','rallyTag','bottomControls','matchActions'].forEach(id=>$('#'+id).hidden=false);$('#footerHint').textContent=count===2?'P1：WASD + J K L ;　 P2：TFGH + 1 2 3 4':'移动：WASD / 方向键　击球：J K L ;';$('#moveTitle').textContent=view==='top'?'一拍一步':'自由跑位';$('#moveHint').textContent=view==='top'?'点击己方半场移动':'左右跑位 · 上键跳起';$('#aimText').textContent=view==='top'?'点击对方半场瞄准':'靠近球再出手';aiTimer=clock+1;scoreboard();resize();notify('点按发前场 · 长按松开发后场；时机条中间最准确。',4);updateTiming();}
 function prepareServe(){cancelInputs();serveReadyAt=clock;lastSmash=[null,null];ball=null;state='serve';rally=0;receiveGrace=0;resetPositions();aiTimer=clock+1.1;scoreboard();}
 function serveQuality(){const phase=(Math.sin((clock-serveReadyAt)*3.6)+1)/2;return 1-Math.abs(phase-.5)*2;}
 function gradeFor(q){return q>.85?'PERFECT':q>.55?'GOOD':'BAD';}
@@ -150,13 +153,13 @@ function showJudgement(grade,team,detail=''){
  playGradeSound(grade);
 }
 function updateShotButtons(){$$('[data-shot]').forEach(b=>b.classList.toggle('active',b.dataset.shot===selected[0]));}
-function award(team,reason){if(state!=='rally')return;lastSmash=[null,null];if(ball?.by===team&&(count===2||1-team===0))showJudgement('BAD',1-team,'未接到球');cancelInputs();const oldServer=servingTeam;score[team]++;servingTeam=team;if(count===2){if(oldServer===team)serviceRight[team]=1-serviceRight[team];else serverIndex=score[team]%2===0?serviceRight[team]:1-serviceRight[team];}else serverIndex=0;state='point';ball=null;notify(`${playerName(team)}得分 · ${reason}`,2.2);if(!judgement)beep(team===0?660:280,.18);scoreboard();if(matchWon(score[team],score[1-team])){games[team]++;history.push([...score]);scoreboard();if(games[team]===2){state='matchover';showResult('比赛结束',`${playerName(team)}赢得比赛`,`${history.map(s=>s.join(' : ')).join('　 /　 ')}　·　局数 ${games[0]} : ${games[1]}`,'再来一场');}else{state='setover';showResult('本局结束',`${playerName(team)}拿下第 ${history.length} 局`,`${score[0]} : ${score[1]}　·　当前局数 ${games[0]} : ${games[1]}`,'开始下一局');}}else{if(history.length===2&&score[team]===11&&score[1-team]<11){endChanged=!endChanged;notify('决胜局 11 分 · 交换场地',2);}aiTimer=clock+2.2;} }
+function award(team,reason){if(state!=='rally')return;if(view==='side'&&team===0)cheerRemaining=CHEER_SECONDS;lastSmash=[null,null];if(ball?.by===team&&(count===2||1-team===0))showJudgement('BAD',1-team,'未接到球');cancelInputs();const oldServer=servingTeam;score[team]++;servingTeam=team;if(count===2){if(oldServer===team)serviceRight[team]=1-serviceRight[team];else serverIndex=score[team]%2===0?serviceRight[team]:1-serviceRight[team];}else serverIndex=0;state='point';ball=null;notify(`${playerName(team)}得分 · ${reason}`,2.2);if(!judgement)beep(team===0?660:280,.18);scoreboard();if(matchWon(score[team],score[1-team])){games[team]++;history.push([...score]);scoreboard();if(games[team]===2){state='matchover';showResult('比赛结束',`${playerName(team)}赢得比赛`,`${history.map(s=>s.join(' : ')).join('　 /　 ')}　·　局数 ${games[0]} : ${games[1]}`,'再来一场');}else{state='setover';showResult('本局结束',`${playerName(team)}拿下第 ${history.length} 局`,`${score[0]} : ${score[1]}　·　当前局数 ${games[0]} : ${games[1]}`,'开始下一局');}}else{if(history.length===2&&score[team]===11&&score[1-team]<11){endChanged=!endChanged;notify('决胜局 11 分 · 交换场地',2);}aiTimer=clock+2.2;} }
 function showResult(eyebrow,title,text,button){$('#resultEyebrow').textContent=eyebrow;$('#resultTitle').textContent=title;$('#resultText').textContent=text;$('#resumeBtn').textContent=button;$('#resumeBtn').hidden=state==='paused';$('#returnMatchBtn').hidden=state!=='paused';$('#pauseOverlay').hidden=false;}
 function pause(){if(!['rally','serve','point'].includes(state))return;cancelInputs();lastSmash=[null,null];previousState=state;state='paused';keys.clear();pointerMoves.clear();showResult('TAKE A BREATH','比赛已暂停','调整一下，下一拍继续。','继续比赛');}
 function resume(){if(!['paused','setover','matchover'].includes(state))return;const old=state;$('#pauseOverlay').hidden=true;if(old==='matchover'){start();return;}if(old==='setover'){score=[0,0];endChanged=!endChanged;prepareServe();notify('新的一局开始 · 场地已交换',2);return;}state=previousState;last=performance.now();}
-function menu(){cancelInputs();$('#racketMenu').hidden=true;lastSmash=[null,null];$("#toast").classList.remove("visible");judgement=null;$('#judgement').hidden=true;state='menu';ball=null;keys.clear();pointerMoves.clear();$('#menu').hidden=false;$('#pauseOverlay').hidden=true;['scoreboard','rallyTag','bottomControls','matchActions'].forEach(id=>$('#'+id).hidden=true);$('#footerHint').textContent='基于你的《羽毛球》规则设计';resize();}
+function menu(){cheerRemaining=0;cancelInputs();$('#racketMenu').hidden=true;lastSmash=[null,null];$("#toast").classList.remove("visible");judgement=null;$('#judgement').hidden=true;state='menu';ball=null;keys.clear();pointerMoves.clear();$('#menu').hidden=false;$('#pauseOverlay').hidden=true;['scoreboard','rallyTag','bottomControls','matchActions'].forEach(id=>$('#'+id).hidden=true);$('#footerHint').textContent='基于你的《羽毛球》规则设计';resize();}
 function move(p,dx,dy,dt,once=false){if(!p||state!=='rally')return;const b=bounds(), minY=p.team===0?6.9:.15,maxY=p.team===0?13.25:6.5;if(view==='top'){if(state==='serve'||p.moveUsed)return;const d=Math.hypot(dx,dy)||1;p.target={x:clamp(p.x+dx/d*2.25,b.left,b.right),y:clamp(p.y+dy/d*2.25,minY,maxY)};p.moveUsed=true;return;}p.y=clamp(p.y-dx*(endChanged?-1:1)*4.3*dt,minY,maxY);if(dy<0&&!p.jumpKeyHeld)startJump(p.team);p.jumpKeyHeld=dy<0;p.crouch=dy>0;p.walk+=Math.abs(dx)*dt*12;}
-function update(dt){if(['paused','menu','racket','matchover','setover'].includes(state))return;clock+=dt;if(judgement&&clock>judgement.until){judgement=null;$('#judgement').hidden=true;}if(clock>toastUntil)$('#toast').classList.remove('visible');effects.forEach(e=>e.life-=dt);effects=effects.filter(e=>e.life>0);
+function update(dt){if(state!=='paused')cheerRemaining=Math.max(0,cheerRemaining-dt);if(['paused','menu','racket','matchover','setover'].includes(state))return;clock+=dt;if(judgement&&clock>judgement.until){judgement=null;$('#judgement').hidden=true;}if(clock>toastUntil)$('#toast').classList.remove('visible');effects.forEach(e=>e.life-=dt);effects=effects.filter(e=>e.life>0);
  
  const p1=players.find(p=>p.team===0&&!p.partner),p2=players.find(p=>p.team===1&&!p.partner);
  if(view==='side'){const dx=Number(keys.has('d')||keys.has('arrowright')||pointerMoves.has('right'))-Number(keys.has('a')||keys.has('arrowleft')||pointerMoves.has('left'));const dy=Number(keys.has('s')||keys.has('arrowdown')||pointerMoves.has('down'))-Number(keys.has('w')||keys.has('arrowup')||pointerMoves.has('up'));move(p1,dx,dy,dt);if(count===2)move(p2,Number(keys.has('h'))-Number(keys.has('f')),Number(keys.has('g'))-Number(keys.has('t')),dt);}
@@ -213,8 +216,69 @@ function shuttleHeading(shuttle){
  return Math.atan2(b.y-a.y,b.x-a.x)+Math.PI/2;
 }
 function drawBall(){if(!ball)return;const b=ball,ground=project(b.to.x,b.to.y),current=project(b.x,b.y,b.z);const fire=Boolean(b.fire||b.jumpSmash||(b.quality>.85&&!b.service));ctx.save();ctx.textAlign='center';ctx.strokeStyle=b.by===0?'#ffd2a2':'#e2f58a';ctx.setLineDash([4,5]);ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(ground.x,ground.y,view==='top'?17:10,view==='top'?10:4,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#061b1855';const shadow=project(b.x,b.y);ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,7,4,0,0,Math.PI*2);ctx.fill();for(let i=b.trail.length-1;i>0;i--){const a=project(b.trail[i].x,b.trail[i].y,b.trail[i].z),c=project(b.trail[i-1].x,b.trail[i-1].y,b.trail[i-1].z);line([a,c],fire?`rgba(255,${100+i*5},58,${(1-i/16)*.8})`:`rgba(231,248,190,${(1-i/16)*.4})`,fire?6-i*.27:3-i*.12);}ctx.translate(current.x,current.y);ctx.rotate(shuttleHeading(b));if(fire){ctx.shadowColor='#ff8b32';ctx.shadowBlur=18;ctx.fillStyle='#ffb740';ctx.beginPath();ctx.moveTo(-5,2);ctx.lineTo(0,19+Math.random()*9);ctx.lineTo(5,2);ctx.fill();}ctx.fillStyle='#f8ffe6';ctx.beginPath();ctx.moveTo(-6,10);ctx.lineTo(-3,0);ctx.lineTo(3,0);ctx.lineTo(6,10);ctx.closePath();ctx.fill();ctx.fillStyle='#dbef84';ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);ctx.fill();ctx.restore();}
+function drawSpectator(x,y,index,elapsed,cheering){
+ const pose=index%3;
+ const standing=cheering&&pose===0;
+ const wave=Math.sin(elapsed*16+index*1.7);
+ const headY=y-(standing?14:9);
+ const bodyY=headY+6;
+ const shirt=CROWD_COLORS[index%CROWD_COLORS.length];
+ ctx.fillStyle=shirt;
+ ctx.fillRect(x-3,bodyY,6,standing?9:6);
+ ctx.beginPath();ctx.arc(x,headY,2.8,0,Math.PI*2);ctx.fill();
+ let left=[x-6,bodyY+4],right=[x+6,bodyY+4];
+ if(standing){
+  left=[x-7,headY-4+wave*3];right=[x+7,headY-4-wave*3];
+ }else if(cheering&&pose===1){
+  const gap=Math.abs(wave)*4;
+  left=[x-gap,bodyY+2];right=[x+gap,bodyY+2];
+ }else if(cheering){
+  right=[x+6+wave*2,headY-4];
+ }
+ line([{x:left[0],y:left[1]},{x:x-2,y:bodyY+1}],shirt,1.7);
+ line([{x:x+2,y:bodyY+1},{x:right[0],y:right[1]}],shirt,1.7);
+}
+function drawStands(){
+ const {w,sideBase,compact}=dimensions;
+ const elapsed=CHEER_SECONDS-cheerRemaining;
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+ const cheering=cheerRemaining>0&&!reduced;
+ const standWidth=Math.min(214,w*.25);
+ const scale=Math.min(1,standWidth/160,Math.max(.58,(sideBase-65)/70));
+ const bottom=Math.max(compact?83:118,Math.min(sideBase-56,compact?151:228));
+ ctx.save();
+ ctx.lineCap='round';
+ for(const side of [-1,1]){
+  const center=w*(.5+side*.33);
+  ctx.save();ctx.translate(center,bottom);ctx.scale(scale,scale);
+  ctx.fillStyle='#284c43';ctx.fillRect(-80,-39,160,39);
+  ctx.fillStyle='#42675a';ctx.fillRect(-77,-23,154,3);
+  ctx.fillStyle='#567f6e';ctx.fillRect(-77,-7,154,3);
+  for(let row=0;row<2;row++){
+   for(let seat=0;seat<9;seat++){
+    const index=row*9+seat+(side===1?2:0);
+    drawSpectator(-66+seat*16+(row===0?4:0),-26+row*16,index,elapsed,cheering);
+   }
+  }
+  ctx.fillStyle='#507b69';ctx.fillRect(-82,-4,164,5);
+  if(cheering){
+   for(let i=0;i<18;i++){
+    const age=elapsed-(i%6)*.095;
+    if(age<0||age>1.45)continue;
+    const x=side*(80+(14+(i*11)%31)*age);
+    const y=-17-(32+(i*17)%55)*age+49*age*age;
+    ctx.save();ctx.translate(x,y);ctx.rotate(i+age*(4+i%3));
+    ctx.globalAlpha=Math.min(1,(1.45-age)*3,cheerRemaining*4);
+    ctx.fillStyle=CROWD_COLORS[i%CROWD_COLORS.length];
+    ctx.fillRect(-2,-1,4+i%3,2.5);ctx.restore();
+   }
+  }
+  ctx.restore();
+ }
+ ctx.restore();
+}
 function drawTargets(){if(state!=='rally'&&state!=='serve')return;if(view==='top'){for(let t=0;t<count;t++){const v=project(aim[t].x,aim[t].y);ctx.strokeStyle=t===0?'#d7f57388':'#ffba8e88';ctx.lineWidth=1;ctx.beginPath();ctx.arc(v.x,v.y,11,0,Math.PI*2);ctx.moveTo(v.x-17,v.y);ctx.lineTo(v.x+17,v.y);ctx.moveTo(v.x,v.y-17);ctx.lineTo(v.x,v.y+17);ctx.stroke();}}for(const p of players){if(p.target){const v=project(p.target.x,p.target.y);ctx.strokeStyle='#d7f57388';ctx.beginPath();ctx.arc(v.x,v.y,8,0,Math.PI*2);ctx.stroke();}}}
-function draw(){ctx.globalAlpha=1;ctx.filter='none';drawCourt();if(isLobby()){stick({x:2.2,y:10.2,team:0,z:0,walk:0,swing:0},true);stick({x:4.3,y:3.2,team:1,z:0,walk:0,swing:0},true);}else{drawTargets();[...players].sort((a,b)=>a.y-b.y).forEach(p=>stick(p));drawBall();for(const e of effects){const v=project(e.x,e.y,e.z);ctx.save();ctx.globalAlpha=e.life;ctx.font='800 22px Barlow Condensed, sans-serif';ctx.fillStyle=e.color;ctx.textAlign='center';ctx.fillText(e.text,v.x,v.y-40-(1-e.life)*35);ctx.restore();}}}
+function draw(){ctx.globalAlpha=1;ctx.filter='none';drawCourt();if(isLobby()){stick({x:2.2,y:10.2,team:0,z:0,walk:0,swing:0},true);stick({x:4.3,y:3.2,team:1,z:0,walk:0,swing:0},true);}else{if(view==='side')drawStands();drawTargets();[...players].sort((a,b)=>a.y-b.y).forEach(p=>stick(p));drawBall();for(const e of effects){const v=project(e.x,e.y,e.z);ctx.save();ctx.globalAlpha=e.life;ctx.font='800 22px Barlow Condensed, sans-serif';ctx.fillStyle=e.color;ctx.textAlign='center';ctx.fillText(e.text,v.x,v.y-40-(1-e.life)*35);ctx.restore();}}}
 function frame(time){const dt=Math.min((time-(last||time))/1000,.035);last=time;update(dt);draw();requestAnimationFrame(frame);}
 function canvasClick(e){if(!['rally','serve'].includes(state)||view!=='top')return;const point=canvasPoint(e),d=dimensions;let x=(point.x-d.cx)/d.cw*6.1+3.05,y=(point.y-d.top)/d.ch*13.4;if(endChanged){x=6.1-x;y=13.4-y;}if(x<0||x>6.1||y<0||y>13.4)return;const p=players.find(p=>p.team===0&&!p.partner);if(y<6.7){aim[0]={x,y};notify('已设置回球方向',.7);}else if(state==='rally'){if(p.moveUsed){notify('本拍已移动，下一次击球后恢复',1);return;}const target={x,y},len=dist(p,target);if(len>6.7){target.x=p.x+(x-p.x)/len*6.7;target.y=p.y+(y-p.y)/len*6.7;}const b=bounds();target.x=clamp(target.x,b.left,b.right);target.y=clamp(target.y,6.9,13.25);p.target=target;p.moveUsed=true;}}
 $$('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;$$('[data-view]').forEach(x=>{x.classList.toggle('selected',x===b);x.setAttribute('aria-pressed',x===b);});resize();});
