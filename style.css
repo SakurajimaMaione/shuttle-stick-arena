@@ -124,3 +124,23 @@ html,body,#app,#app *{touch-action:pan-x pan-y!important}
  #shotPanel [data-shot="smash"] small{font-size:10px}
 }
 @media(orientation:landscape) and (max-height:320px){.racketOptions svg{height:34px}.racketHeader{margin-bottom:5px}.racketOptions button{padding:6px}.racketFooter{margin-top:6px}}
+
+/* Keep informational HUD between the controls, clear of the side-view baseline. */
+#centerStatus{align-self:flex-end;flex:1;max-width:360px;min-width:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#365e50ed;pointer-events:none}
+#centerStatus .shotHint{display:block;margin:0;font-size:13px;line-height:1.5}#centerStatus #timingText{display:block}#centerStatus #aimText{display:block;font-size:12px;color:var(--muted)}
+#centerStatus #serveTiming{padding:4px 0 0}#centerStatus #serveHint{font-size:12px}
+.pauseCard{padding:24px 28px;max-height:calc(100dvh - 20px);overflow:auto}
+.pauseCard h2{font-size:28px;line-height:1.3;margin:8px 0}.pauseCard p{margin:8px 0 16px}
+.resultActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.resultActions button{margin:0!important;min-height:40px;padding:8px 12px}
+.resultActions #returnMatchBtn,.resultActions #resumeBtn,.resultActions #resultMenuBtn{grid-column:1 / -1}
+.resultActions #returnMatchBtn{min-height:46px}
+@media(orientation:landscape) and (max-height:540px), (orientation:portrait) and (max-width:600px), (orientation:portrait) and (any-pointer:coarse){
+ #bottomControls{display:grid;grid-template-columns:160px minmax(0,1fr) 166px;gap:12px;align-items:end}
+ #centerStatus{justify-self:center;width:min(100%,340px);padding:8px 12px;max-width:none}
+ #centerStatus .shotHint{font-size:12px;min-height:0}#centerStatus #aimText{display:none}#centerStatus #serveHint{font-size:11px}
+ #shotPanel{width:166px}#shotPanel .shots{margin:0}
+ .pauseCard{padding:16px 24px;max-height:calc(var(--game-height,100dvh) - 16px);width:min(380px,90%)}
+ .pauseCard h2{font-size:23px;margin:5px 0}.pauseCard p{font-size:13px;line-height:1.4;margin:6px 0 10px}.pauseCard .eyebrow{font-size:10px}
+ .resultActions{gap:6px}.resultActions button{font-size:13px;min-height:34px;padding:6px 10px}.resultActions #returnMatchBtn{min-height:40px}
+}
+@media(orientation:landscape) and (max-height:320px), (orientation:portrait) and (max-width:320px){#bottomControls{grid-template-columns:144px minmax(0,1fr) 148px;gap:10px}#shotPanel{width:148px}#centerStatus{padding:6px 8px}.pauseCard{padding:10px 20px}.pauseCard p{margin:4px 0 8px}}
